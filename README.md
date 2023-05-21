@@ -17,9 +17,9 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Instalation
 1. Copy main.dart inside lib folder
-2. Follow the link to https://flutlab.io/
-3. On the site, click on the 'Get started' button and paste the code into main.dart
-4. At the top, next to the inscription Flutlab, click on the start button
+2. Follow the link to https://zapp.run/
+3. On the site, paste the code into main.dart
+4. On the site, click on the green run button on the top right corner
 
 ## Instruction how to use the game
 - Click to open the cage
