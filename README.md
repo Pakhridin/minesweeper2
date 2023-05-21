@@ -1,6 +1,6 @@
 # minesweeper
 
-A new Flutter project.
+A new Flutter project for nFactorial school.
 
 ## Getting Started
 
@@ -14,3 +14,17 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Instalation
+1. Copy main.dart inside lib folder
+2. Follow the link to https://flutlab.io/
+3. On the site, click on the 'Get started' button and paste the code into main.dart
+4. At the top, next to the inscription Flutlab, click on the start button
+
+## Instruction how to use the game
+- Click to open the cage
+- if there is a number then nothing will happen
+- if it is empty, then he will open the adjacent cell until he meets a number in it
+- if there was a mine then you lose
+- to put a flag on a cell, hold it down
+- if you lose you can restart the game by pressing reset
