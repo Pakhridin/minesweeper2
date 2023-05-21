@@ -7,14 +7,13 @@ enum TileState { covered, blown, open, flagged, revealed }
 void main() => runApp(MineSweeper());
 
 class MineSweeper extends StatelessWidget {
-  const MineSweeper({super.key});
+  const MineSweeper({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    var board = Board();
     return MaterialApp(
       title: "Mine Sweeper",
-      home: board,
+      home: Board(),
     );
   }
 }
@@ -55,12 +54,12 @@ class BoardState extends State<Board> {
       setState(() {});
     });
 
-    uiState = new List<List<TileState>>.generate(rows, (row) {
-      return new List<TileState>.filled(cols, TileState.covered);
+    uiState = List<List<TileState>>.generate(rows, (row) {
+      return List<TileState>.filled(cols, TileState.covered);
     });
 
-    tiles = new List<List<bool>>.generate(rows, (row) {
-      return new List<bool>.filled(cols, false);
+    tiles = List<List<bool>>.generate(rows, (row) {
+      return List<bool>.filled(cols, false);
     });
 
     Random random = Random();
@@ -105,11 +104,12 @@ class BoardState extends State<Board> {
               if (state == TileState.covered) probe(x, y);
             },
             child: Listener(
-                child: CoveredMineTile(
-              flagged: state == TileState.flagged,
-              posX: x,
-              posY: y,
-            )),
+              child: CoveredMineTile(
+                flagged: state == TileState.flagged,
+                posX: x,
+                posY: y,
+              ),
+            ),
           ));
           if (state == TileState.covered) {
             hasCoveredCell = true;
@@ -121,161 +121,129 @@ class BoardState extends State<Board> {
           ));
         }
       }
-      boardRow.add(Row(
-        children: rowChildren,
-        mainAxisAlignment: MainAxisAlignment.center,
-        key: ValueKey<int>(y),
-      ));
+      boardRow.add(Row(children: rowChildren));
     }
+
     if (!hasCoveredCell) {
-      if ((minesFound == numOfMines) && alive) {
+      timer?.cancel();
+      stopwatch.stop();
+      if (minesFound == numOfMines) {
         wonGame = true;
-        stopwatch.stop();
       }
     }
 
-    return Container(
-      color: Colors.grey[700],
-      padding: const EdgeInsets.all(10.0),
-      child: Column(
-        children: boardRow,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    int timeElapsed = stopwatch.elapsedMilliseconds ~/ 1000;
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-          centerTitle: true,
-          title: const Text('Mine Sweeper'),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(45.0),
-            child: Row(children: <Widget>[
-              FlatButton(
-                child: const Text(
-                  'Reset Board',
-                  style: TextStyle(color: Colors.white),
-                ),
-                onPressed: () => resetBoard(),
-                highlightColor: Colors.green,
-                splashColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                    color: (Colors.blue[200])!,
-                  ),
-                ),
-                color: Colors.blueAccent[100],
-              ),
-              Container(
-                height: 40.0,
-                alignment: Alignment.center,
-                child: RichText(
-                  text: TextSpan(
-                      text: wonGame
-                          ? "You've Won! $timeElapsed seconds"
-                          : alive
-                              ? "[Mines Found: $minesFound] [Total Mines: $numOfMines] [$timeElapsed seconds]"
-                              : "You've Lost! $timeElapsed seconds"),
-                ),
-              ),
-            ]),
-          )),
-      body: Container(
-        color: Colors.grey[50],
-        child: Center(
-          child: buildBoard(),
-        ),
-      ),
-    );
+    return Column(children: boardRow);
   }
 
   void probe(int x, int y) {
     if (!alive) return;
-    if (uiState[y][x] == TileState.flagged) return;
-    setState(() {
-      if (tiles[y][x]) {
+
+    if (tiles[y][x]) {
+      setState(() {
         uiState[y][x] = TileState.blown;
         alive = false;
         timer?.cancel();
-        stopwatch.stop(); // force the stopwatch to stop.
-      } else {
-        open(x, y);
-        if (!stopwatch.isRunning) stopwatch.start();
-      }
+        stopwatch.stop();
+      });
+      return;
+    }
+
+    setState(() {
+      discover(x, y);
     });
   }
 
-  void open(int x, int y) {
+  void discover(int x, int y) {
     if (!inBoard(x, y)) return;
-    if (uiState[y][x] == TileState.open) return;
+
+    if (uiState[y][x] != TileState.covered) return;
+
     uiState[y][x] = TileState.open;
 
-    if (mineCount(x, y) > 0) return;
-
-    open(x - 1, y);
-    open(x + 1, y);
-    open(x, y - 1);
-    open(x, y + 1);
-    open(x - 1, y - 1);
-    open(x + 1, y + 1);
-    open(x + 1, y - 1);
-    open(x - 1, y + 1);
+    if (mineCount(x, y) == 0) {
+      for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+          if (i != 0 || j != 0) {
+            discover(x + i, y + j);
+          }
+        }
+      }
+    }
   }
 
   void flag(int x, int y) {
     if (!alive) return;
+
     setState(() {
       if (uiState[y][x] == TileState.flagged) {
         uiState[y][x] = TileState.covered;
-        --minesFound;
+        minesFound--;
       } else {
         uiState[y][x] = TileState.flagged;
-        ++minesFound;
+        minesFound++;
       }
     });
   }
 
   int mineCount(int x, int y) {
     int count = 0;
-    count += bombs(x - 1, y);
-    count += bombs(x + 1, y);
-    count += bombs(x, y - 1);
-    count += bombs(x, y + 1);
-    count += bombs(x - 1, y - 1);
-    count += bombs(x + 1, y + 1);
-    count += bombs(x + 1, y - 1);
-    count += bombs(x - 1, y + 1);
+    for (int i = -1; i <= 1; i++) {
+      for (int j = -1; j <= 1; j++) {
+        if (inBoard(x + i, y + j) && bombs(x + i, y + j)) count++;
+      }
+    }
     return count;
   }
 
-  int bombs(int x, int y) => inBoard(x, y) && tiles[y][x] ? 1 : 0;
-  bool inBoard(int x, int y) => x >= 0 && x < cols && y >= 0 && y < rows;
-  
-  FlatButton({required Text child, required void Function() onPressed, required MaterialColor highlightColor, required MaterialAccentColor splashColor, required RoundedRectangleBorder shape, Color? color}) {}
-}
+  bool inBoard(int x, int y) {
+    return x >= 0 && x < cols && y >= 0 && y < rows;
+  }
 
-Widget buildTile(Widget child) {
-  return Container(
-    padding: const EdgeInsets.all(1.0),
-    height: 30.0,
-    width: 30.0,
-    color: Colors.grey[400],
-    margin: const EdgeInsets.all(2.0),
-    child: child,
-  );
-}
+  bool bombs(int x, int y) {
+    if (inBoard(x, y)) {
+      return tiles[y][x];
+    }
+    return false;
+  }
 
-Widget buildInnerTile(Widget child) {
-  return Container(
-    padding: const EdgeInsets.all(1.0),
-    margin: const EdgeInsets.all(2.0),
-    height: 20.0,
-    width: 20.0,
-    child: child,
-  );
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Mine Sweeper"),
+      ),
+      body: Center(
+        child: Column(
+          children: [
+            Container(
+              margin: EdgeInsets.all(10),
+              child: Text(
+                "Mines Found: $minesFound",
+                style: TextStyle(fontSize: 24),
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.all(10),
+              child: Text(
+                "Time Elapsed: ${stopwatch.elapsed.inSeconds}",
+                style: TextStyle(fontSize: 24),
+              ),
+            ),
+            buildBoard(),
+            if (!alive || wonGame)
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    resetBoard();
+                  });
+                },
+                child: Text("Restart"),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class CoveredMineTile extends StatelessWidget {
@@ -283,83 +251,61 @@ class CoveredMineTile extends StatelessWidget {
   final int posX;
   final int posY;
 
-  const CoveredMineTile({super.key, required this.flagged, required this.posX, required this.posY});
+  const CoveredMineTile({Key? key, required this.flagged, required this.posX, required this.posY}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    late Widget text;
-    if (flagged) {
-      text = buildInnerTile(RichText(
-        text: const TextSpan(
-          text: "\u2691",
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: Colors.grey,
+        border: Border.all(
+          color: Colors.black,
         ),
-        textAlign: TextAlign.center,
-      ));
-    }
-    var text2 = text;
-    Widget innerTile = Container(
-      padding: const EdgeInsets.all(1.0),
-      margin: const EdgeInsets.all(2.0),
-      height: 20.0,
-      width: 20.0,
-      color: Colors.grey[350],
-      child: (text2),
+      ),
+      child: flagged ? Icon(Icons.flag, color: Colors.red) : null,
     );
-
-    return buildTile(innerTile);
   }
 }
 
 class OpenMineTile extends StatelessWidget {
   final TileState state;
   final int count;
-  OpenMineTile({required this.state, required this.count});
 
-  final List textColor = [
-    Colors.blue,
-    Colors.green,
-    Colors.red,
-    Colors.purple,
-    Colors.cyan,
-    Colors.amber,
-    Colors.brown,
-    Colors.black,
-  ];
+  const OpenMineTile({Key? key, required this.state, required this.count}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    late Widget text;
+    Color? color;
+    String text = "";
 
-    if (state == TileState.open) {
-      if (count != 0) {
-        text = RichText(
-          text: TextSpan(
-            text: '$count',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: textColor[count - 1],
-            ),
-          ),
-          textAlign: TextAlign.center,
-        );
-      }
-    } else {
-      text = RichText(
-        text: const TextSpan(
-          text: '\u2739',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.red,
-          ),
-        ),
-        textAlign: TextAlign.center,
-      );
+    switch (state) {
+      case TileState.open:
+        color = Colors.white;
+        if (count > 0) {
+          text = count.toString();
+        }
+        break;
+      case TileState.blown:
+        color = Colors.red;
+        break;
+      default:
+        break;
     }
-    var text2 = text;
-    return buildTile(buildInnerTile(text));
+
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: color,
+        border: Border.all(
+          color: Colors.black,
+        ),
+      ),
+      child: Center(
+        child: Text(text),
+      ),
+    );
   }
 }
